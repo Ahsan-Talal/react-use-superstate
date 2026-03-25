@@ -52,8 +52,8 @@ export function setState<T>(key: string, updater: Updater<T>): void {
   }
 
   const prevValue = entry.value as T;
-  const nextValue = typeof updater === 'function' 
-    ? (updater as (p: T) => T)(prevValue) 
+  const nextValue = typeof updater === 'function'
+    ? (updater as (p: T) => T)(prevValue)
     : updater;
 
   if (Object.is(prevValue, nextValue)) return;
@@ -69,7 +69,7 @@ export function setState<T>(key: string, updater: Updater<T>): void {
 
 export function subscribe(key: string, listener: () => void): () => void {
   const entry = registry.get(key);
-  if (!entry) return () => {};
+  if (!entry) return () => { };
 
   entry.listeners.add(listener);
   entry.subscriberCount++;

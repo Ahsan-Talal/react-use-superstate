@@ -50,6 +50,20 @@
     "hooks",
     "useSyncExternalStore",
     "state-management",
-    "typescript"
-  ]
+    "typescript",
+    "zero-boilerplate",
+    "store",
+    "react-hooks",
+    "proxy-state",
+    "signal-like",
+    "fine-grained-reactivity"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Ahsan-Talal/react-use-superstate.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Ahsan-Talal/react-use-superstate/issues"
+  },
+  "homepage": "https://superstate-docs.vercel.app"
 }
