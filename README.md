@@ -9,106 +9,113 @@
   <img alt="NPM License" src="https://img.shields.io/npm/l/react-use-superstate?color=FF2B6E">
 </p>
 
-SuperState is a tiny, zero-boilerplate state management library for React that lets you share global state across modules with simple exports—**no providers, no Context API, and zero complex selectors required.**
+SuperState is a tiny, zero-boilerplate state management library for React. It allows you to share global state across components with simple string keys—**no providers, no Context API, and no complex selectors.**
 
 ```bash
 npm install react-use-superstate
 ```
 
-## Table of Contents
+## 🎯 Key Features
 
-1. [Why SuperState?](#why-superstate)
-2. [📊 Benchmarks](#-benchmarks)
-3. [🍦 Getting Started](#-getting-started)
-4. [🚀 Usage Patterns](#-usage-patterns)
-5. [⚡️ Store Utilities](#-store-utilities)
-6. [👩🏻‍⚖️ License](#-license)
+-   **Zero Boilerplate:** No store files, no `<Provider>` wrapping (except for optional SSR hydration).
+-   **Fine-grained reactivity:** Built on `useSyncExternalStore`. Only components watching a specific key (or nested path) re-render.
+-   **Deep Path Selectors:** Subscribe to nested objects or arrays using dot notation (`user.name`) or bracket notation (`users[0].id`).
+-   **SSR Ready:** First-class support for Server-Side Rendering with hydration safety.
+-   **Atomic Batching:** Group multiple updates into a single re-render cycle.
+-   **TypeScript First:** Full type safety and intelligent inference.
 
-## Why SuperState?
+## 🍦 Getting Started: The Owner/Consumer Pattern
 
--   **Zero Boilerplate:** No store files, no `<Provider>` at the root, no complex configuration. Just a string key to share state.
--   **Fine-grained reactivity:** Built on `useSyncExternalStore`. Only components watching a specific key (or sub-key) re-render.
--   **Zustand Alternative:** Easier to adopt incrementally. Promote any local `useState` to global without refactoring to a store file.
--   **TypeScript-first:** Full type safety and intelligent inference out of the box.
--   **Production-ready:** Minimal footprint (~0.8kB gzipped), persistent state support, and robust batching.
+SuperState follows a simple **Owner / Consumer** model. If you know `useState`, you already know SuperState.
 
-## 📊 Benchmarks
+### 1. The Owner (Declaration)
+Use `createSuperState` to "own" and initialize a global piece of state.
 
-| Metric | SuperState | Zustand | Redux Toolkit |
-| :--- | :--- | :--- | :--- |
-| **Bundle Size (Gzipped)** | **~0.8 kB** | ~1.1 kB | ~12 kB+ |
-| **Update Latency** | **<1ms** | <1ms | ~2-3ms |
-| **Boilerplate** | **Zero** | Low | High |
-| **Provider Required** | **No** | No | Yes |
+```tsx
+import { createSuperState } from "react-use-superstate"
 
-## 🍦 Getting Started
-
-SuperState uses an **Owner / Consumer** pattern. If you know `useState`, you already know SuperState.
-
-### React
-
-```jsx
-import { createSuperState, useSuperState } from "react-use-superstate"
-
-// 1. Define and own the state
 function Navbar() {
-    const [user] = createSuperState('user', { name: 'Ahsan', age: 25 })
+    // This component "owns" the 'user' state. 
+    // It works exactly like useState but registers it globally.
+    const [user, setUser] = createSuperState('user', { name: 'Ahsan', age: 25 })
+    
     return <h3>Welcome, {user.name}</h3>
 }
+```
 
-// 2. Consume from anywhere else
+### 2. The Consumer (Usage)
+Use `useSuperState` to consume that state from **any other component** in your app.
+
+```tsx
+import { useSuperState } from "react-use-superstate"
+
 function Profile() {
-    const [age, setAge] = useSuperState('user.age')
-    return <button onClick={() => setAge(a => a + 1)}>Age: {age}</button>
+    // Access the 'user' state from anywhere!
+    const [user, setUser] = useSuperState('user')
+    
+    return <button onClick={() => setUser(u => ({ ...u, age: u.age + 1 }))}>
+      Age: {user.age}
+    </button>
 }
 ```
 
-## 🚀 Usage Patterns
+## 🚀 Advanced Usage
 
-### Global vs Local
-Promote any local `useState` to a global one just by adding a string key! Remove the key to make it local again.
+### Dot & Bracket Notation (Selectors)
+Subscribe directly to nested properties. Your component will **only** re-render if that specific property changes.
 
-```javascript
-// Global: Shared across every component with 'theme' key
-const [theme, setTheme] = createSuperState('theme', 'light')
-
-// Local: Works exactly like React's useState
-const [count, setCount] = createSuperState(0)
-```
-
-### Dot-Notation Selectors
-Subscribe directly to nested object properties. Your component will **only** re-render if that specific property changes.
-
-```javascript
-// Subscribes only to 'address.city'
+```tsx
+// Subscribe ONLY to the city property
 const [city, setCity] = useSuperState('user.address.city')
+
+// Subscribe to a specific array element
+const [firstItem, setFirstItem] = useSuperState('cart[0]')
 ```
 
-## ⚡️ Store Utilities
+### Zero-Provider SSR Hydration
+For SSR (Next.js, Remix), use `SuperStateProvider` to safely hydrate state from server to client and prevent data leaks between requests.
 
-Access and manipulate your global state outside of React components (e.g., in API headers or utility functions).
+```tsx
+// app/layout.tsx (Next.js Example)
+import { SuperStateProvider } from 'react-use-superstate';
 
-```javascript
+export default function RootLayout({ children }) {
+  const serverData = { user: { name: 'Ahsan' } }; // Fetched on server
+
+  return (
+    <html>
+      <body>
+        <SuperStateProvider initialState={serverData}>
+          {children}
+        </SuperStateProvider>
+      </body>
+    </html>
+  );
+}
+```
+
+### Global Store Utilities
+Manipulate state outside of React components (e.g., in API interceptors, WebSockets, or utility functions).
+
+```tsx
 import { getState, setState, batchUpdate, resetState } from "react-use-superstate"
 
-// Sync access
+// Get value synchronously
 const user = getState('user')
 
 // Functional updates
 setState('user', (prev) => ({ ...prev, name: 'Talal' }))
 
-// Atomic batching
+// Atomic batching (triggers only 1 re-render)
 batchUpdate(() => {
-    setState('count', 1)
+    setState('count', 10)
     setState('theme', 'dark')
 })
 
-// Reset to initial owner value
+// Reset to its owner's initial value
 resetState('user')
 ```
-
 ## 👩🏻‍⚖️ License
 
--   SuperState is MIT licensed.
--   Created by **Sheikh Ahsan Talal**.
+MIT © [Sheikh Ahsan Talal](https://github.com/sh-ahsan)
 

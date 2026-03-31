@@ -1,18 +1,9 @@
-// ─── Public Types ────────────────────────────────────────────────────────────
-
-/**
- * Updater — either a new value or a function from previous to next.
- * Matches the useState setter signature exactly.
- */
-export type Updater<T> = T | ((prev: T) => T);
+import type { Dispatch, SetStateAction } from 'react';
 
 /**
  * The return tuple from useSuperState — identical to useState.
  */
-export type SuperStateTuple<T> = [
-  T,
-  (value: T | ((prev: T) => T)) => void,
-];
+export type SuperStateTuple<T> = [T, Dispatch<SetStateAction<T>>];
 
 /**
  * Internal entry stored per key in the global registry.

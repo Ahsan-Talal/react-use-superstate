@@ -1,6 +1,6 @@
 {
   "name": "react-use-superstate",
-  "version": "1.0.5",
+  "version": "1.0.7",
   "description": "Zero-boilerplate, key-based global state management for React. Built on useSyncExternalStore.",
   "author": "Sheikh Ahsan Talal",
   "license": "MIT",

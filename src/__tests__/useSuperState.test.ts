@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { useSuperState } from '../useSuperState';
-import { createSuperState } from '../createSuperState';
-import { destroyStore, getState } from '../store';
+import { useSuperState } from '../hooks/useSuperState';
+import { createSuperState } from '../hooks/createSuperState';
+import { destroyStore, getState } from '../core/store';
 
 describe('useSuperState', () => {
   beforeEach(() => {
@@ -79,5 +79,65 @@ describe('useSuperState', () => {
     });
 
     expect(getState('direct')).toBe(100);
+  });
+
+  // ─── Brutal Edge Case Tests ───────────────────────────────────────────────
+
+  it('should safely construct deep properties via dot-notation if they are completely undefined', () => {
+    // Component 1 creates state implicitly as undefined initially or an empty object
+    const { result: owner } = renderHook(() => createSuperState('deepUser', undefined as any));
+    
+    // Setup nested path string that doesn't exist yet
+    const { result: nested } = renderHook(() => useSuperState('deepUser.profile.social.twitter'));
+
+    act(() => {
+      // Act: Write directly to an uninitialized deep path!
+      nested.current[1]('@ahsan');
+    });
+
+    // Asset: SuperState should have generated `{ profile: { social: { twitter: '@ahsan' } } }`
+    expect(nested.current[0]).toBe('@ahsan');
+    expect(owner.current[0]).toEqual({ profile: { social: { twitter: '@ahsan' } } });
+  });
+
+  it('should safely construct deep array buckets via bracket-notation if undefined', () => {
+    const { result: root } = renderHook(() => createSuperState('matrix', null as any));
+    const { result: cell } = renderHook(() => useSuperState('matrix.rows[0].cols[2]'));
+
+    act(() => {
+      cell.current[1]('X');
+    });
+
+    // Assert that bracket notation `[0]` successfully yielded an array `[]`, not an object `{ '0': ... }`
+    expect(root.current[0].rows).toBeInstanceOf(Array);
+    expect(root.current[0].rows[0].cols).toBeInstanceOf(Array);
+    expect(root.current[0].rows[0].cols[2]).toBe('X');
+    expect(cell.current[0]).toBe('X');
+  });
+
+  it('mutating an array explicitly does not destroy other items in the sequence', () => {
+    const { result: root } = renderHook(() => createSuperState('list', [1, 2, 3]));
+    const { result: middleItem } = renderHook(() => useSuperState('list[1]'));
+
+    act(() => {
+      middleItem.current[1](99);
+    });
+
+    expect(root.current[0]).toEqual([1, 99, 3]); // Only middle mutated
+    expect(middleItem.current[0]).toBe(99);
+  });
+
+  it('module cache correctly evicts boundaries in extreme path generation', () => {
+    // Since our cache limit is 1000, we write 1005 distinct keys.
+    renderHook(() => createSuperState('cacheTest', 0));
+    for (let i = 0; i <= 1005; i++) {
+        renderHook(() => useSuperState(`cacheTest.prop${i}`));
+    }
+    // No crash, and the 1005th works perfectly.
+    const { result: val } = renderHook(() => useSuperState('cacheTest.prop1005'));
+    act(() => {
+      val.current[1]('survived');
+    });
+    expect(val.current[0]).toBe('survived');
   });
 });

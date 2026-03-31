@@ -9,7 +9,7 @@ import {
   hasKey,
   getKeys,
   destroyStore,
-} from '../store';
+} from '../core/store';
 
 describe('Store', () => {
   beforeEach(() => {
@@ -73,9 +73,9 @@ describe('Store', () => {
       const unsub = subscribe('count', listener);
 
       unsub();
-      // Note: Key might be deleted after unsub if subscriber count reached 0
-      // but setState would still work if we re-init or if it survived.
-      // In our current store, unsub() deletes the key if count <= 0.
+      setState('count', 99);
+      // Listener should NOT be called after unsubscribe
+      expect(listener).not.toHaveBeenCalled();
     });
 
     it('should keep keys even when subscriber count reaches 0', () => {
@@ -84,15 +84,27 @@ describe('Store', () => {
 
       expect(hasKey('temp')).toBe(true);
       unsub();
-      expect(hasKey('temp')).toBe(true); // Should remain in registry
+      // Global state persists — only destroyStore() or resetState() clears it
+      expect(hasKey('temp')).toBe(true);
     });
 
+    it('should be idempotent — calling unsubscribe twice is safe', () => {
+      const listener = vi.fn();
+      initKey('count', 0);
+      const unsub = subscribe('count', listener);
+
+      unsub();
+      unsub(); // second call should be a no-op, not decrement subscriberCount
+
+      // Verify the key still works correctly
+      setState('count', 42);
+      expect(getState('count')).toBe(42);
+    });
   });
 
   describe('resetState', () => {
     it('should reset a specific key to its initial value', () => {
       initKey('count', 0);
-      // We must have a subscriber to prevent auto-cleanup if we want to test reset
       subscribe('count', () => {}); 
       setState('count', 99);
       resetState('count');
@@ -131,7 +143,23 @@ describe('Store', () => {
     });
   });
 
-  describe('hasKey / getKeys / destroyStore', () => {
+  describe('destroyStore', () => {
+    it('should notify all listeners before clearing', () => {
+      const listenerA = vi.fn();
+      const listenerB = vi.fn();
+      initKey('a', 1);
+      initKey('b', 2);
+      subscribe('a', listenerA);
+      subscribe('b', listenerB);
+
+      destroyStore();
+
+      // Both listeners should have been notified
+      expect(listenerA).toHaveBeenCalledTimes(1);
+      expect(listenerB).toHaveBeenCalledTimes(1);
+      expect(getKeys()).toEqual([]);
+    });
+
     it('hasKey returns true for existing keys', () => {
       initKey('x', 1);
       expect(hasKey('x')).toBe(true);

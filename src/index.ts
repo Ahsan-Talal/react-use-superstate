@@ -3,8 +3,9 @@
 // Works exactly like useState, but shared across every component.
 
 // Core hooks — the main things users need
-export { useSuperState } from './useSuperState';
-export { createSuperState } from './createSuperState';
+export { useSuperState } from './hooks/useSuperState';
+export { createSuperState } from './hooks/createSuperState';
+export { createLocalState } from './hooks/createLocalState';
 
 // Store utilities (read/write state outside React components)
 export {
@@ -15,11 +16,12 @@ export {
   hasKey,
   getKeys,
   destroyStore,
-} from './store';
+  initKey as initState,
+} from './core/store';
 
 // SSR helpers
-export { SuperStateProvider, dehydrate } from './ssr';
+export { SuperStateProvider, useServerStateContext } from './ssr';
 export type { SuperStateProviderProps } from './ssr';
 
 // Types
-export type { SuperStateTuple, Updater } from './types';
+export type { SuperStateTuple } from './types';
